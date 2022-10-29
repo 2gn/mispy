@@ -1,25 +1,69 @@
 from urllib3 import PoolManager
+from re import search as re_search
+from csv import reader as csv_reader
 
-def _readReturnFile(filename):
-    with open(filename, "r") as f:
-        return f.read()
+DATA_KEYS = ['名称', '都道府県', '無線局の目的', '免許の年月日']
 
-def searchByCallsign(callsign, use_cache=False):
-    theUrl = "https://www.tele.soumu.go.jp/musen/SearchServlet?MA={}&SelectID=1&SelectOW=01&DC=100&SK=2&pageID=5&SC=1&CONFIRM=1".format(callsign)
-    data = PoolManager().request("GET",theUrl).data.decode("shift-jis") if not use_cache else _readReturnFile("cache")
-    with open("cache", "w") as f:
-        f.write(data)
-    data = data.splitlines()
+class Station():
+    def __init__(
+        self,
+        name,
+        location,
+        purpose,
+        expiry_date
+    ):
+        self.name = name
+        self.location = location
+        self.purpose = purpose,
+        self.expiry_date = expiry_date
+        self.callsign = re_search(
+            "[A-Z,0-9]+",
+            self.name
+        )[0]
 
-    desalinate = lambda str: str.replace('"', '').split(",")
-    theDatas = data[8:]
-    theFormat = desalinate(data[7])
-    result = []
-    for theData in theDatas:
-        theData = desalinate(theData)
-        packed = {theFormat: theData for theFormat, theData in zip(theFormat, theData) }
-        result.append(packed)
+    def into_json(self):
+        return {
+            self.callsign: {
+                "name": self.name,
+                "location": self.location,
+                "purpose": self.purpose,
+                "expiry_date": self.expiry_date,
+            }
+        }
 
-    return result
+def search(
+    type,
+    callsign=None,
+    prefecture=None,
+    freq_from=None,
+    freq_to=None,
+    owner_name=None
+):
+    raw_datas = PoolManager().request(
+        "GET",
+        "https://www.tele.soumu.go.jp/musen/SearchServlet?MA={callsign}&SelectID=1&SelectOW=0{type}&HC={prefecture}&FF={freq_from}&TF={freq_to}&NA={owner_name}&DC=100&SK=2&pageID=5&SC=1&CONFIRM=1".format(
+            callsign=callsign,
+            type=type,
+            prefecture=prefecture,
+            freq_from=freq_from,
+            freq_to=freq_to,
+            owner_name=owner_name
+        )
+    ).data.decode("shift-jis")
 
-print(searchByCallsign("JA1ZG",use_cache=False))
+    result = [
+        line for line in csv_reader(
+            raw_datas.splitlines()
+        )
+        if line != []
+    ]
+
+    result = result[
+        # get index of ['名称', '都道府県', '無線局の目的', '免許の年月日'] . Lists after that will be the results we're looking for.
+        result.index(DATA_KEYS) + 1:
+    ]
+
+    return [
+        Station(*station_data) for station_data in result
+    ]
+
