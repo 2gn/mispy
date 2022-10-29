@@ -1,7 +1,5 @@
 # Description
 
-非公式の無線局等情報検索 API
-
 An unofficial API dedicated for searching ham-radio callsigns in Japan.
 
 # Usage
