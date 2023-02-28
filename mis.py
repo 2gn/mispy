@@ -32,7 +32,7 @@ class Station():
         }
 
 def search(
-    type,
+    station_type,
     callsign=None,
     prefecture=None,
     freq_from=None,
@@ -41,14 +41,7 @@ def search(
 ):
     raw_datas = PoolManager().request(
         "GET",
-        "https://www.tele.soumu.go.jp/musen/SearchServlet?MA={callsign}&SelectID=1&SelectOW=0{type}&HC={prefecture}&FF={freq_from}&TF={freq_to}&NA={owner_name}&DC=100&SK=2&pageID=5&SC=1&CONFIRM=1".format(
-            callsign=callsign,
-            type=type,
-            prefecture=prefecture,
-            freq_from=freq_from,
-            freq_to=freq_to,
-            owner_name=owner_name
-        )
+        f"https://www.tele.soumu.go.jp/musen/SearchServlet?MA={callsign}&SelectID=1&SelectOW=0{station_type}&HC={prefecture}&FF={freq_from}&TF={freq_to}&NA={owner_name}&DC=100&SK=2&pageID=5&SC=1&CONFIRM=1"
     ).data.decode("shift-jis")
 
     result = [
